@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PharmaMarketingSkillOutput",
+  "type": "object",
+  "required": ["objective", "insights", "recommendations", "evidence", "assumptions", "data_gaps"],
+  "properties": {
+    "objective": {"type": "string"},
+    "insights": {"type": "array", "items": {"type": "string"}},
+    "recommendations": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "data_gaps": {"type": "array", "items": {"type": "string"}},
+    "compliance_flags": {"type": "array", "items": {"type": "string"}}
+  }
+}
