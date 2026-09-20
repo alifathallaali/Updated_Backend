@@ -13,8 +13,9 @@ app = FastAPI(
     redirect_slashes=True
 )
 
-# السماح لجميع نطاقات Vercel الفرعية والأساسية
+# قائمة النطاقات المسموح لها بالاتصال بالـ Backend
 allowed_origins = [
+    "https://updated-frontend-steel.vercel.app",
     "https://frontend-pharma-lens-ai.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -23,12 +24,24 @@ allowed_origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    # إضافة Regex للسماح بأي بريفيو لينك من Vercel على الهاتف
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    # دعم جميع نطاقات Vercel سواء كانت الإنتاجية أو الـ Preview
+    allow_origin_regex=r"https://.*\-steel\.vercel\.app|https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
+    # إظهار الهيدرز التي يحتاجها TUS Client أثناء عملية الرفع والـ Resumable Upload
+    expose_headers=[
+        "Location",
+        "Upload-Offset",
+        "Upload-Length",
+        "Tus-Resumable",
+        "Tus-Version",
+        "Tus-Extension",
+        "Tus-Max-Size",
+        "X-Signature",
+        "Content-Type",
+        "Authorization",
+    ],
 )
 
 app.include_router(auth.router)
