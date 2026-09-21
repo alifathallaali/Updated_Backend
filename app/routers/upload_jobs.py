@@ -185,6 +185,14 @@ def get_status(
     )
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
+
+    # If the job is stuck in 'cancelling', finalize it to 'cancelled' on poll
+    if job.status == "cancelling":
+        job.status = "cancelled"
+        job.stage = "cancelled"
+        db.commit()
+        db.refresh(job)
+
     return _payload(job)
 
 
