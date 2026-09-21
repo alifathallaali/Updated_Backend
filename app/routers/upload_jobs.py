@@ -13,9 +13,9 @@ router = APIRouter(prefix="/api/upload-jobs", tags=["upload-jobs"])
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".parquet"}
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://asfnfwafnhdpuxcjjdta.supabase.co")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "datasets")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://asfnfwafnhdpuxcjjdta.supabase.co").strip()
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "datasets").strip()
 
 
 def _payload(job: UploadJob):
@@ -32,6 +32,10 @@ def _payload(job: UploadJob):
 
 
 def _build_upload_payload(storage_key: str):
+    """
+    يبني بيانات كائن الرفع بأمان؛ إما بـ TUS إذا كان Service Key متاحاً،
+    أو عبر Presigned PUT URL كخيار احتياطي مع التحقق التام من وجود الرابط.
+    """
     if SUPABASE_SERVICE_ROLE_KEY:
         endpoint = f"{SUPABASE_URL.rstrip('/')}/storage/v1/upload/resumable"
         return {
@@ -41,13 +45,28 @@ def _build_upload_payload(storage_key: str):
             "bucket": STORAGE_BUCKET,
             "key": storage_key,
         }
-    else:
+
+    # الخيار الاحتياطي Presigned URL
+    try:
         presigned = storage_put_presigned_url(storage_key, expires_in=3600)
-        return {
-            "method": "PUT",
-            "url": presigned["url"],
-            "key": storage_key,
-        }
+        url = presigned.get("url") if isinstance(presigned, dict) else presigned
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"فشل إنشاء رابط الرفع الاحتياطي: {str(err)}",
+        )
+
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="لم يرجع السيرفر رابط رفع صالح (Presigned URL). يرجى التأكد من ضبط SUPABASE_SERVICE_ROLE_KEY في Render.",
+        )
+
+    return {
+        "method": "PUT",
+        "url": url,
+        "key": storage_key,
+    }
 
 
 @router.post("")
@@ -86,10 +105,8 @@ def create_job(
     )
 
     if existing:
-        if existing.status == "created":
-            upload = _build_upload_payload(existing.storage_key)
-            return {**_payload(existing), "upload": upload, "reused": True}
-        return {**_payload(existing), "reused": True}
+        upload = _build_upload_payload(existing.storage_key)
+        return {**_payload(existing), "upload": upload, "reused": True}
 
     storage_key = f"workspaces/{body.workspace_id}/raw/{body.file_name}"
     upload = _build_upload_payload(storage_key)
