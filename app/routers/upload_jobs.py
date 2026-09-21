@@ -105,6 +105,15 @@ def create_job(
     )
 
     if existing:
+        # إذا تم إعادة رفع نفس الملف الذي انتهى أو أُلغي سابقاً، يُعاد تهيئة حالته ليقبل رفعاً جديداً
+        if existing.status in {"ready", "completed", "failed", "cancelled"}:
+            existing.status = "created"
+            existing.stage = "created"
+            existing.progress = 0
+            existing.error_message = None
+            db.commit()
+            db.refresh(existing)
+
         upload = _build_upload_payload(existing.storage_key)
         return {**_payload(existing), "upload": upload, "reused": True}
 
@@ -144,9 +153,6 @@ def complete_job(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
 
-    if job.status not in {"created", "failed"}:
-        return _payload(job)
-
     result = crud.create_dataset_with_first_version(
         db,
         user.id,
@@ -163,13 +169,13 @@ def complete_job(
 
     _, version = result
     job.dataset_version_id = version.id
-    
+
     # تحويل الحالة فوراً إلى ready لتنتهي المعالجة بدون الحاجة لـ background worker
     job.status = "ready"
     job.stage = "completed"
     job.progress = 100
     job.error_message = None
-    
+
     db.commit()
     db.refresh(job)
     return _payload(job)
@@ -189,7 +195,7 @@ def get_status(
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
 
-    # If the job is stuck in 'cancelling', finalize it to 'cancelled' on poll
+    # إنهاء عملية الـ Polling فوراً إذا كان الطلب ملغياً
     if job.status == "cancelling":
         job.status = "cancelled"
         job.stage = "cancelled"
@@ -219,9 +225,9 @@ def retry_job(
         )
 
     job.status, job.stage, job.progress, job.error_message, job.cancel_requested = (
-        "queued",
-        "queued",
-        2,
+        "created",
+        "created",
+        0,
         None,
         False,
     )
