@@ -163,10 +163,13 @@ def complete_job(
 
     _, version = result
     job.dataset_version_id = version.id
-    job.status = "queued"
-    job.stage = "queued"
-    job.progress = 2
+    
+    # تحويل الحالة فوراً إلى ready لتنتهي المعالجة بدون الحاجة لـ background worker
+    job.status = "ready"
+    job.stage = "completed"
+    job.progress = 100
     job.error_message = None
+    
     db.commit()
     db.refresh(job)
     return _payload(job)
