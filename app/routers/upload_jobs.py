@@ -9,13 +9,14 @@ from ..models import UploadJob, User
 from ..schemas import UploadCompleteRequest, UploadSessionRequest
 from ..storage import storage_put_presigned_url
 
-router = APIRouter(prefix="/api/upload-sessions", tags=["upload-jobs"])
+router = APIRouter(prefix="/api/upload-jobs", tags=["upload-jobs"])
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".parquet"}
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://asfnfwafnhdpuxcjjdta.supabase.co")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "datasets")
+
 
 def _payload(job: UploadJob):
     return {
@@ -29,11 +30,8 @@ def _payload(job: UploadJob):
         "cancelRequested": job.cancel_requested,
     }
 
+
 def _build_upload_payload(storage_key: str):
-    """
-    يتحقق من وجود Service Role Key؛ إذا كان موجوداً يرجع إعدادات TUS المباشرة
-    لـ Supabase Resumable Storage، وإلا يتراجع عن TUS ويعتمد Standard PUT URL.
-    """
     if SUPABASE_SERVICE_ROLE_KEY:
         endpoint = f"{SUPABASE_URL.rstrip('/')}/storage/v1/upload/resumable"
         return {
@@ -44,7 +42,6 @@ def _build_upload_payload(storage_key: str):
             "key": storage_key,
         }
     else:
-        # Fallback إلى الرابط الموقع التقليدي بأسلوب PUT
         presigned = storage_put_presigned_url(storage_key, expires_in=3600)
         return {
             "method": "PUT",
@@ -52,25 +49,39 @@ def _build_upload_payload(storage_key: str):
             "key": storage_key,
         }
 
+
 @router.post("")
-def create_session(
+def create_job(
     body: UploadSessionRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if not crud.is_workspace_member(db, user.id, body.workspace_id):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this workspace")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "You do not have access to this workspace"
+        )
 
-    extension = "." + body.file_name.rsplit(".", 1)[-1].lower() if "." in body.file_name else ""
+    extension = (
+        "." + body.file_name.rsplit(".", 1)[-1].lower() if "." in body.file_name else ""
+    )
     if extension not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Supported formats: CSV, XLSX, XLS, Parquet")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Supported formats: CSV, XLSX, XLS, Parquet",
+        )
 
     if body.size_bytes > MAX_UPLOAD_BYTES:
-        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Maximum file size is 500 MB")
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            "Maximum file size is 500 MB",
+        )
 
     existing = (
         db.query(UploadJob)
-        .filter(UploadJob.idempotency_key == body.idempotency_key, UploadJob.user_id == user.id)
+        .filter(
+            UploadJob.idempotency_key == body.idempotency_key,
+            UploadJob.user_id == user.id,
+        )
         .first()
     )
 
@@ -97,8 +108,9 @@ def create_session(
 
     return {**_payload(job), "upload": upload}
 
+
 @router.post("/complete")
-def complete_session(
+def complete_job(
     body: UploadCompleteRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -128,7 +140,9 @@ def complete_session(
         job.storage_key,
     )
     if not result:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have access to this workspace")
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "You do not have access to this workspace"
+        )
 
     _, version = result
     job.dataset_version_id = version.id
@@ -140,16 +154,22 @@ def complete_session(
     db.refresh(job)
     return _payload(job)
 
+
 @router.get("/{job_id}")
 def get_status(
     job_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    job = db.query(UploadJob).filter(UploadJob.id == job_id, UploadJob.user_id == user.id).first()
+    job = (
+        db.query(UploadJob)
+        .filter(UploadJob.id == job_id, UploadJob.user_id == user.id)
+        .first()
+    )
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
     return _payload(job)
+
 
 @router.post("/{job_id}/retry")
 def retry_job(
@@ -157,11 +177,18 @@ def retry_job(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    job = db.query(UploadJob).filter(UploadJob.id == job_id, UploadJob.user_id == user.id).first()
+    job = (
+        db.query(UploadJob)
+        .filter(UploadJob.id == job_id, UploadJob.user_id == user.id)
+        .first()
+    )
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
     if job.status not in {"failed", "cancelled"}:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Only failed or cancelled jobs can be retried")
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Only failed or cancelled jobs can be retried",
+        )
 
     job.status, job.stage, job.progress, job.error_message, job.cancel_requested = (
         "queued",
@@ -173,13 +200,18 @@ def retry_job(
     db.commit()
     return _payload(job)
 
+
 @router.post("/{job_id}/cancel")
 def cancel_job(
     job_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    job = db.query(UploadJob).filter(UploadJob.id == job_id, UploadJob.user_id == user.id).first()
+    job = (
+        db.query(UploadJob)
+        .filter(UploadJob.id == job_id, UploadJob.user_id == user.id)
+        .first()
+    )
     if not job:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Upload job not found")
     if job.status in {"ready", "failed", "cancelled"}:
