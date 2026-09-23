@@ -1,0 +1,11 @@
+PharmaLens AI V0.2/backend/MED_REP_PLANNER_MVP_CLOSURE_DELTA_MANIFEST.json
+PharmaLens AI V0.2/backend/POST_MED_REP_CONSOLIDATION_MANIFEST.md
+PharmaLens AI V0.2/backend/app/engines/data_compatibility.py
+PharmaLens AI V0.2/backend/app/engines/engine_registry.py
+PharmaLens AI V0.2/backend/app/engines/exercise_manifest.py
+PharmaLens AI V0.2/backend/app/engines/field_force_adapters/__init__.py
+PharmaLens AI V0.2/backend/app/engines/field_force_adapters/field_force_planner_adapter.py
+PharmaLens AI V0.2/backend/app/engines/field_force_adapters/grounding.py
+PharmaLens AI V0.2/backend/app/engines/intent_resolver.py
+PharmaLens AI V0.2/backend/app/visualization/service.py
+PharmaLens AI V0.2/backend/tests/test_med_rep_planner_mvp_closure.py

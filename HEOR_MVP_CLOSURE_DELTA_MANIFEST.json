@@ -1,0 +1,35 @@
+{
+  "delta_name": "HEOR & Market Access MVP Closure",
+  "base": "NEWSLETTER MVP CLOSURE CONSOLIDATED + Visualization TS Release-Blocker Fix",
+  "preserve_for_later": "Scientific Office Final Quick-Win Implementation Delta",
+  "test_results": {
+    "heor_closure_tests": "6 passed",
+    "full_backend_regression": "219 passed"
+  },
+  "files": [
+    "PharmaLens AI V0.2/app/engines/engine_registry.py",
+    "PharmaLens AI V0.2/app/engines/exercise_manifest.py",
+    "PharmaLens AI V0.2/app/engines/intent_resolver.py",
+    "PharmaLens AI V0.2/app/engines/heor_adapters/__init__.py",
+    "PharmaLens AI V0.2/app/engines/heor_adapters/heor_market_access_adapter.py",
+    "PharmaLens AI V0.2/app/engines/heor_adapters/grounding.py",
+    "PharmaLens AI V0.2/app/routers/copilot.py",
+    "PharmaLens AI V0.2/app/visualization/service.py",
+    "PharmaLens AI V0.2/src/engines/heor_market_access/__init__.py",
+    "PharmaLens AI V0.2/src/engines/heor_market_access/heor.py",
+    "PharmaLens AI V0.2/src/engines/heor_market_access/mcda.py",
+    "PharmaLens AI V0.2/src/engines/heor_market_access/budget_impact.py",
+    "PharmaLens AI V0.2/src/engines/heor_market_access/heor_decision_engine.py",
+    "PharmaLens AI V0.2/src/engines/scenario_planning/__init__.py",
+    "PharmaLens AI V0.2/tests/test_heor_mvp_closure.py",
+    "PharmaLens AI V0.2/tests/test_visualization_coverage_audit.py"
+  ],
+  "notes": [
+    "Additive HEOR domain capability only.",
+    "No Synthetic Data changes.",
+    "No Scientific Office bulk exercise changes.",
+    "No frontend redesign.",
+    "Existing PDF/PPTX report exporters are reused without modification.",
+    "Product catalog is derived from exercise_manifest.py; no parallel catalog was created."
+  ]
+}

@@ -5,9 +5,9 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-BRAND_RED = HexColor("#DF201D")
-INK = HexColor("#111111")
-MUTED = HexColor("#646464")
+BRAND_RED = HexColor("#2FA7A0")
+INK = HexColor("#16324F")
+MUTED = HexColor("#64748B")
 
 
 def build_decision_brief_pdf(product_id: str, status: str, output: dict) -> bytes:
@@ -66,6 +66,25 @@ def build_decision_brief_pdf(product_id: str, status: str, output: dict) -> byte
     score = round((confidence.get("score") or 0) * 100)
     line(f"Confidence: {score}% \u2014 {confidence.get('level') or 'unknown'}", 11, INK, "Helvetica-Bold", 6 * mm)
     wrapped(confidence.get("rationale") or "Review the evidence before making a business decision.", 9, MUTED)
+
+
+    for chart in (output.get("visualizations") or [])[:4]:
+        if y < 55 * mm:
+            doc.showPage()
+            y = 280 * mm
+        role = (chart.get("presentationPriority") or {}).get("role", "diagnostic")
+        title = (chart.get("meta") or {}).get("title") or chart.get("chartId") or "Visualization"
+        line(("Primary visual — " if role == "primary" else "Diagnostic visual — ") + str(title), 12, BRAND_RED, "Helvetica-Bold", 6 * mm)
+        if (chart.get("presentationQuality") or {}).get("warnings"):
+            wrapped("Presentation note: review visual density.", 8, MUTED, dy=4.5 * mm)
+        data = chart.get("data") or []
+        series = chart.get("series") or []
+        x_key = chart.get("xKey")
+        data_key = series[0].get("dataKey") if series else None
+        for row in data[:8]:
+            label = row.get(x_key, "") if x_key else ""
+            value = row.get(data_key, "") if data_key else ""
+            wrapped(f"{label}: {value}", 9, INK, dy=4.8 * mm)
 
     y -= 10 * mm
     line("Made by PharmaLens AI   /   Evidence first / Decisions forward", 9, MUTED, "Helvetica-Bold")

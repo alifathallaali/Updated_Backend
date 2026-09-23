@@ -1,0 +1,34 @@
+{
+  "baseline": "PharmaLens AI \u2014 POST-HEOR CONSOLIDATED CHECKPOINT",
+  "closure": "Hospital Supply Chain & Procurement MVP Closure Delta",
+  "product": "product-19 Hospital Procurement Intelligence",
+  "focused_tests": "7 passed",
+  "mounted_full_regression": "218 passed",
+  "manager_declared_checkpoint": "234 / 234 tests passed before closure",
+  "validation_note": "The mounted canonical artifact available in this session contained 211 pre-closure tests. After adding 7 focused closure tests, the complete mounted suite is 218/218. The additional tests represented by the manager-declared 234-test checkpoint were not present in the mounted artifact, so 241/241 cannot be claimed from this environment.",
+  "frontend_changes": [],
+  "changed_or_added_files": [
+    "PharmaLens AI V0.2/app/engines/engine_registry.py",
+    "PharmaLens AI V0.2/app/engines/exercise_manifest.py",
+    "PharmaLens AI V0.2/app/engines/data_compatibility.py",
+    "PharmaLens AI V0.2/app/engines/dataset_intelligence.py",
+    "PharmaLens AI V0.2/app/engines/intent_resolver.py",
+    "PharmaLens AI V0.2/app/mapping_engine.py",
+    "PharmaLens AI V0.2/app/schemas.py",
+    "PharmaLens AI V0.2/app/visualization/service.py",
+    "PharmaLens AI V0.2/app/engines/hospital_procurement_adapters/__init__.py",
+    "PharmaLens AI V0.2/app/engines/hospital_procurement_adapters/grounding.py",
+    "PharmaLens AI V0.2/app/engines/hospital_procurement_adapters/hospital_procurement_adapter.py",
+    "PharmaLens AI V0.2/src/engines/hospital_procurement/__init__.py",
+    "PharmaLens AI V0.2/src/engines/hospital_procurement/procurement.py",
+    "PharmaLens AI V0.2/src/engines/hospital_procurement/tender_evaluation.py",
+    "PharmaLens AI V0.2/tests/test_hospital_procurement_mvp_closure.py",
+    "PharmaLens AI V0.2/tests/test_visualization_coverage_audit.py"
+  ],
+  "scope_guardrails": [
+    "No UI redesign",
+    "No parallel API/Copilot/reporting/visualization system",
+    "No synthetic data regeneration",
+    "No ERP/WMS/enterprise functionality"
+  ]
+}

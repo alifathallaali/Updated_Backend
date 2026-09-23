@@ -7,6 +7,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Boolean,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -274,3 +276,77 @@ class UserNotification(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     read_at: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class NewsletterSource(Base):
+    __tablename__ = "newsletter_sources"
+    __table_args__ = (UniqueConstraint("workspace_id", "name", name="uq_newsletter_source_workspace_name"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    base_url: Mapped[str | None] = mapped_column(String(1200), nullable=True)
+    source_type: Mapped[str] = mapped_column(String(40), nullable=False, default="news")
+    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="discovery")
+    verification_priority: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+class NewsletterPreference(Base):
+    __tablename__ = "newsletter_preferences"
+    __table_args__ = (UniqueConstraint("workspace_id", "user_id", name="uq_newsletter_preference_workspace_user"),)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    markets_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    companies_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    therapeutic_areas_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    topics_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    sections_json: Mapped[str] = mapped_column(Text, nullable=False, default='["daily_signals","company_performance","financial_intelligence"]')
+    frequency: Mapped[str] = mapped_column(String(20), nullable=False, default="daily")
+    timezone: Mapped[str] = mapped_column(String(80), nullable=False, default="UTC")
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    delivery_hour: Mapped[int] = mapped_column(Integer, nullable=False, default=8)
+    suppressed_at: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class NewsletterDelivery(Base):
+    __tablename__ = "newsletter_deliveries"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    recipient_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    subject: Mapped[str] = mapped_column(String(500), nullable=False)
+    provider: Mapped[str] = mapped_column(String(40), nullable=False, default="resend")
+    provider_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    scheduled_for: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class NewsletterSourceItem(Base):
+    __tablename__ = "newsletter_source_items"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_url: Mapped[str | None] = mapped_column(String(1200), nullable=True)
+    market: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    therapeutic_area: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    published_at: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    retrieved_at: Mapped["DateTime"] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    canonical_url: Mapped[str | None] = mapped_column(String(1200), nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    verification_status: Mapped[str] = mapped_column(String(30), nullable=False, default="unverified")
+    evidence_level: Mapped[str] = mapped_column(String(10), nullable=False, default="E0")
+    verified_at: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    verified_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

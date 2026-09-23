@@ -1,0 +1,28 @@
+{
+  "delta": "Consumer Health Intelligence MVP Closure",
+  "canonical_baseline": "PharmaLens AI — POST-MED-REP CONSOLIDATED CHECKPOINT",
+  "manager_approved_baseline_tests": "250/250",
+  "artifact_available_test_inventory_after_delta": 241,
+  "focused_consumer_health_tests": "14/14 passed",
+  "full_available_regression": "241/241 passed",
+  "baseline_discrepancy": "The locally reconstructable POST-MED-REP artifact contains fewer tests than the Manager-approved 250-test canonical inventory. This delta does not redefine the canonical baseline.",
+  "created": [
+    "PharmaLens AI V0.2/app/engines/consumer_health_adapters/__init__.py",
+    "PharmaLens AI V0.2/app/engines/consumer_health_adapters/grounding.py",
+    "PharmaLens AI V0.2/app/engines/consumer_health_adapters/category_management.py",
+    "PharmaLens AI V0.2/app/engines/consumer_health_adapters/consumer_health_adapter.py",
+    "PharmaLens AI V0.2/tests/test_consumer_health_mvp_closure.py",
+    "PharmaLens AI V0.2/CONSUMER_HEALTH_MVP_CLOSURE_DELTA_MANIFEST.json"
+  ],
+  "modified": [
+    "PharmaLens AI V0.2/app/engines/exercise_manifest.py",
+    "PharmaLens AI V0.2/app/engines/engine_registry.py",
+    "PharmaLens AI V0.2/app/engines/intent_resolver.py",
+    "PharmaLens AI V0.2/app/engines/data_compatibility.py",
+    "PharmaLens AI V0.2/app/visualization/service.py",
+    "PharmaLens AI V0.2/tests/test_visualization_coverage_audit.py"
+  ],
+  "not_modified": ["PharmaLens AI V0.2/app/engines/product_catalog.py"],
+  "parallel_consumer_health_platform_created": false,
+  "out_of_scope_not_added": ["retailer POS infrastructure","e-commerce scraping","consumer panels","social listening","promotion optimization","planograms","loyalty/CRM","media buying","store execution","retail ERP","inventory/warehouse","D2C commerce"]
+}

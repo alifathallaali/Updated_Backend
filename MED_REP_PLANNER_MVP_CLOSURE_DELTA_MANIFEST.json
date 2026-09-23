@@ -1,0 +1,29 @@
+{
+  "baseline": "PharmaLens AI — POST-HOSPITAL PROCUREMENT CONSOLIDATED CHECKPOINT",
+  "feature": "Product-13 Field Force Planner / Medical Rep Planner MVP Closure",
+  "scope": "closure_delta_only",
+  "created": [
+    "PharmaLens AI V0.2/app/engines/field_force_adapters/__init__.py",
+    "PharmaLens AI V0.2/app/engines/field_force_adapters/grounding.py",
+    "PharmaLens AI V0.2/app/engines/field_force_adapters/field_force_planner_adapter.py",
+    "PharmaLens AI V0.2/tests/test_med_rep_planner_mvp_closure.py"
+  ],
+  "modified": [
+    "PharmaLens AI V0.2/app/engines/engine_registry.py",
+    "PharmaLens AI V0.2/app/engines/exercise_manifest.py",
+    "PharmaLens AI V0.2/app/engines/intent_resolver.py",
+    "PharmaLens AI V0.2/app/engines/data_compatibility.py",
+    "PharmaLens AI V0.2/app/visualization/service.py"
+  ],
+  "tests": {
+    "focused": "9 passed",
+    "full_package_regression": "227 passed",
+    "baseline_claim": "241/241",
+    "note": "The supplied POST-HOSPITAL PROCUREMENT consolidated backend package currently collects 227 tests after adding 9 new closure tests; therefore the stated 241-test baseline could not be reproduced from the supplied package and is not claimed as validated."
+  },
+  "out_of_scope_confirmed": [
+    "CRM replacement", "Google Calendar", "autonomous scheduling", "GPS tracking",
+    "route optimization", "expense management", "HR attendance", "sample management",
+    "call recording", "external CRM write-back", "complex omnichannel orchestration"
+  ]
+}

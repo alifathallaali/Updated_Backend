@@ -1,4 +1,3 @@
-import os
 import re
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,15 +7,12 @@ from ..deps import get_current_user
 from ..models import UploadJob, User
 from ..schemas import UploadCompleteRequest, UploadSessionRequest
 from ..storage import storage_put_presigned_url
+from ..upload_processing import process_upload_job
+from ..security import enforce_upload_limit, safe_storage_filename
 
 router = APIRouter(prefix="/api/upload-jobs", tags=["upload-jobs"])
 MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".parquet"}
-
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://asfnfwafnhdpuxcjjdta.supabase.co").strip()
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
-STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "datasets").strip()
-
 
 def _payload(job: UploadJob):
     return {
@@ -32,41 +28,14 @@ def _payload(job: UploadJob):
 
 
 def _build_upload_payload(storage_key: str):
-    """
-    يبني بيانات كائن الرفع بأمان؛ إما بـ TUS إذا كان Service Key متاحاً،
-    أو عبر Presigned PUT URL كخيار احتياطي مع التحقق التام من وجود الرابط.
-    """
-    if SUPABASE_SERVICE_ROLE_KEY:
-        endpoint = f"{SUPABASE_URL.rstrip('/')}/storage/v1/upload/resumable"
-        return {
-            "method": "TUS",
-            "endpoint": endpoint,
-            "token": SUPABASE_SERVICE_ROLE_KEY,
-            "bucket": STORAGE_BUCKET,
-            "key": storage_key,
-        }
-
-    # الخيار الاحتياطي Presigned URL
+    """Issue a narrowly scoped signed upload credential; never expose service-role keys."""
     try:
-        presigned = storage_put_presigned_url(storage_key, expires_in=3600)
-        url = presigned.get("url") if isinstance(presigned, dict) else presigned
+        return storage_put_presigned_url(storage_key, expires_in=3600, add_suffix=False)
     except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"فشل إنشاء رابط الرفع الاحتياطي: {str(err)}",
-        )
-
-    if not url:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="لم يرجع السيرفر رابط رفع صالح (Presigned URL). يرجى التأكد من ضبط SUPABASE_SERVICE_ROLE_KEY في Render.",
-        )
-
-    return {
-        "method": "PUT",
-        "url": url,
-        "key": storage_key,
-    }
+            detail="Unable to create a secure upload session",
+        ) from err
 
 
 @router.post("")
@@ -79,6 +48,8 @@ def create_job(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "You do not have access to this workspace"
         )
+    enforce_upload_limit(user.id)
+    safe_name = safe_storage_filename(body.file_name)
 
     extension = (
         "." + body.file_name.rsplit(".", 1)[-1].lower() if "." in body.file_name else ""
@@ -117,13 +88,13 @@ def create_job(
         upload = _build_upload_payload(existing.storage_key)
         return {**_payload(existing), "upload": upload, "reused": True}
 
-    storage_key = f"workspaces/{body.workspace_id}/raw/{body.file_name}"
+    storage_key = f"workspaces/{body.workspace_id}/raw/{safe_name}"
     upload = _build_upload_payload(storage_key)
 
     job = UploadJob(
         workspace_id=body.workspace_id,
         user_id=user.id,
-        file_name=body.file_name,
+        file_name=safe_name,
         storage_key=storage_key,
         idempotency_key=body.idempotency_key,
         size_bytes=body.size_bytes,
@@ -170,13 +141,15 @@ def complete_job(
     _, version = result
     job.dataset_version_id = version.id
 
-    # تحويل الحالة فوراً إلى ready لتنتهي المعالجة بدون الحاجة لـ background worker
-    job.status = "ready"
-    job.stage = "completed"
-    job.progress = 100
+    # Run the governed ingestion pipeline. Do not mark a dataset ready before
+    # mapping, validation, quality checks and curated storage have completed.
+    job.status = "processing"
+    job.stage = "queued"
+    job.progress = 5
     job.error_message = None
-
     db.commit()
+    db.refresh(job)
+    process_upload_job(db, job)
     db.refresh(job)
     return _payload(job)
 

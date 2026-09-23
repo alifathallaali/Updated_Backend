@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import achievement, auth, copilot, data, datasets, files, filters, product_runs, products, profile, reports, skills, upload_jobs, workspaces
+from .routers import achievement, auth, copilot, data, datasets, files, filters, product_runs, products, profile, reports, skills, upload_jobs, workspaces, newsletter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -13,34 +13,20 @@ app = FastAPI(
     redirect_slashes=True
 )
 
-# قائمة النطاقات المسموح لها بالاتصال بالـ Backend
-allowed_origins = [
-    "https://updated-frontend-steel.vercel.app",
-    "https://frontend-pharma-lens-ai.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# Production CORS is environment-driven. Development defaults live in Settings.
+settings.validate_production()
+allowed_origins = settings.cors_origin_list
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    # دعم جميع نطاقات Vercel سواء كانت الإنتاجية أو الـ Preview
-    allow_origin_regex=r"https://.*\-steel\.vercel\.app|https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    # إظهار الهيدرز التي يحتاجها TUS Client أثناء عملية الرفع والـ Resumable Upload
     expose_headers=[
-        "Location",
-        "Upload-Offset",
-        "Upload-Length",
-        "Tus-Resumable",
-        "Tus-Version",
-        "Tus-Extension",
-        "Tus-Max-Size",
-        "X-Signature",
-        "Content-Type",
-        "Authorization",
+        "Location", "Upload-Offset", "Upload-Length", "Tus-Resumable",
+        "Tus-Version", "Tus-Extension", "Tus-Max-Size", "X-Signature",
+        "Content-Type", "Authorization",
     ],
 )
 
@@ -58,6 +44,7 @@ app.include_router(data.router)
 app.include_router(achievement.router)
 app.include_router(upload_jobs.router)
 app.include_router(skills.router)
+app.include_router(newsletter.router)
 
 @app.get("/api/health")
 def health():

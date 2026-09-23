@@ -1,0 +1,2 @@
+from .hospital_procurement_adapter import run_hospital_procurement_adapter
+__all__=["run_hospital_procurement_adapter"]

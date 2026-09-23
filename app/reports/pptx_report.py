@@ -6,12 +6,13 @@ from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches, Pt
 
 SECTOR_THEMES = {
-    "marketing": {"accent": "20639B", "navy": "173F5F", "highlight": "F6D55C", "background": "F5F8FC"},
-    "sales": {"accent": "2E8B57", "navy": "12372A", "highlight": "F4A261", "background": "F1F8F4"},
-    "supply": {"accent": "00838F", "navy": "263238", "highlight": "FFB703", "background": "F3F7F8"},
-    "default": {"accent": "DF201D", "navy": "111111", "highlight": "54D5EF", "background": "FBFBFA"},
+    "marketing": {"accent": "2FA7A0", "navy": "16324F", "highlight": "2E8B70", "background": "F7F9FB"},
+    "sales": {"accent": "2FA7A0", "navy": "16324F", "highlight": "2E8B70", "background": "F7F9FB"},
+    "supply": {"accent": "2FA7A0", "navy": "16324F", "highlight": "2E8B70", "background": "F7F9FB"},
+    "default": {"accent": "2FA7A0", "navy": "16324F", "highlight": "2E8B70", "background": "F7F9FB"},
 }
-MUTED = "646464"
+
+MUTED = "64748B"
 
 
 def _theme_for_product(product_id: str) -> dict:
@@ -96,6 +97,46 @@ def build_decision_brief_pptx(product_id: str, status: str, output: dict) -> byt
         _add_text(evidence_slide, 9.6, y, 3.0, 0.3, str(item.get("source", "")), 9, palette["highlight"], align=PP_ALIGN.RIGHT)
     _add_text(evidence_slide, 0.65, 5.95, 8.8, 0.5, confidence.get("rationale") or "Review the evidence before making a business decision.", 11, "C9C9C9")
     footer(evidence_slide)
+
+
+    # Visualization slides — use the same saved ChartSpec contract as the web UI.
+    for chart in (output.get("visualizations") or [])[:6]:
+        slide = prs.slides.add_slide(blank)
+        _set_background(slide, palette["background"])
+        title = (chart.get("meta") or {}).get("title") or chart.get("chartId") or "Visualization"
+        description = (chart.get("meta") or {}).get("description") or ""
+        role = (chart.get("presentationPriority") or {}).get("role", "diagnostic")
+        quality = chart.get("presentationQuality") or {}
+        label = "PRIMARY VISUAL" if role == "primary" else "DIAGNOSTIC VISUAL"
+        _add_text(slide, 0.65, 0.55, 4, 0.3, label, 10, palette["accent"], bold=True)
+        if quality.get("warnings"):
+            _add_text(slide, 9.4, 0.55, 2.6, 0.3, "REVIEW VISUAL DENSITY", 8, "C94C4C", bold=True, align=PP_ALIGN.RIGHT)
+        _add_text(slide, 0.65, 1.05, 10.8, 0.55, str(title), 24, palette["navy"], bold=True)
+        if description:
+            _add_text(slide, 0.65, 1.62, 10.8, 0.4, str(description), 10, MUTED)
+        data = chart.get("data") or []
+        series = chart.get("series") or []
+        x_key = chart.get("xKey")
+        primary = series[0] if series else {}
+        data_key = primary.get("dataKey")
+        values = []
+        for row in data[:8]:
+            try:
+                value = float(row.get(data_key, 0)) if data_key else 0
+            except (TypeError, ValueError):
+                value = 0
+            values.append((str(row.get(x_key, "")) if x_key else "", value))
+        max_value = max((abs(v) for _, v in values), default=1) or 1
+        for index, (label, value) in enumerate(values):
+            y = 2.25 + index * 0.52
+            _add_text(slide, 0.65, y, 2.4, 0.25, label[:32], 9, MUTED)
+            bar_width = 6.4 * abs(value) / max_value
+            shape = slide.shapes.add_shape(1, Inches(3.05), Inches(y), Inches(max(0.08, bar_width)), Inches(0.22))
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = _color(palette["accent"])
+            shape.line.fill.background()
+            _add_text(slide, 9.7, y, 2.2, 0.25, f"{value:,.1f}", 9, palette["navy"], bold=True, align=PP_ALIGN.RIGHT)
+        footer(slide)
 
     buffer = BytesIO()
     prs.save(buffer)

@@ -8,6 +8,7 @@ from ..engines.market_insights import build_market_insights
 from ..models import User
 from ..schemas import FileRegister
 from ..storage import storage_put_presigned_url
+from ..security import enforce_upload_limit, require_workspace_storage_key, safe_storage_filename
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -18,14 +19,19 @@ def list_files(workspace_id: int, user: User = Depends(get_current_user), db: Se
 
 
 @router.post("/presign")
-def presign_upload(workspace_id: int, file_name: str, user: User = Depends(get_current_user)):
+def presign_upload(workspace_id: int, file_name: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Returns a direct-to-R2 presigned PUT URL for large files (matches the
     Upload 500MB Excel -> Worker background-processing flow in the architecture doc)."""
-    return storage_put_presigned_url(f"workspaces/{workspace_id}/uploads/{file_name}")
+    if not crud.is_workspace_member(db, user.id, workspace_id):
+        raise HTTPException(403, "You do not have access to this workspace")
+    enforce_upload_limit(user.id)
+    safe_name = safe_storage_filename(file_name)
+    return storage_put_presigned_url(f"workspaces/{workspace_id}/uploads/{safe_name}")
 
 
 @router.post("")
 def register_file(body: FileRegister, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_workspace_storage_key(body.workspace_id, body.storage_key)
     file = crud.register_workspace_file(db, user.id, body.workspace_id, body.file_name, body.storage_key, body.mime_type)
     if not file:
         raise HTTPException(403, "You do not have access to this workspace")

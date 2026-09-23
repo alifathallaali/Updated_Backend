@@ -11,7 +11,8 @@ from ..deps import get_current_user
 from ..models import User
 from ..reports.pdf_report import build_decision_brief_pdf
 from ..reports.pptx_report import build_decision_brief_pptx
-from ..schemas import ReportFromRun
+from ..reports.export_parity import prepare_export_output
+from ..schemas import ReportFromRun, ReportSelectionFromRun
 from ..storage import storage_get_signed_url, storage_put
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -30,6 +31,21 @@ def _load_run_output(db: Session, user: User, workspace_id: int, run_id: int):
     return run, output
 
 
+def _selected_output(output: dict, body: ReportSelectionFromRun) -> dict:
+    selected = set(body.selected_chart_ids or [])
+    filtered = dict(output)
+    if selected:
+        filtered["visualizations"] = [
+            chart for chart in (output.get("visualizations") or [])
+            if chart.get("chartId") in selected
+        ]
+    if not body.include_metrics:
+        filtered["metrics"] = {}
+    if not body.include_evidence:
+        filtered["evidence"] = []
+    return filtered
+
+
 @router.get("")
 def list_reports(workspace_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return crud.list_generated_reports(db, user.id, workspace_id)
@@ -44,8 +60,9 @@ def download(report_id: int, user: User = Depends(get_current_user), db: Session
 
 
 @router.post("/pdf-from-run")
-def create_pdf_from_run(body: ReportFromRun, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_pdf_from_run(body: ReportSelectionFromRun, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     run, output = _load_run_output(db, user, body.workspace_id, body.run_id)
+    output = prepare_export_output(_selected_output(output, body))
     pdf_bytes = build_decision_brief_pdf(run.product_id, run.status, output)
     artifact = storage_put(f"workspaces/{body.workspace_id}/reports/{run.product_id}-decision-brief.pdf", pdf_bytes, "application/pdf")
     report = crud.create_generated_report(db, user.id, body.workspace_id, "decision-brief-pdf", f"{run.product_id} Decision Brief PDF", artifact["key"])
@@ -55,8 +72,9 @@ def create_pdf_from_run(body: ReportFromRun, user: User = Depends(get_current_us
 
 
 @router.post("/pptx-from-run")
-def create_pptx_from_run(body: ReportFromRun, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_pptx_from_run(body: ReportSelectionFromRun, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     run, output = _load_run_output(db, user, body.workspace_id, body.run_id)
+    output = prepare_export_output(_selected_output(output, body))
     pptx_bytes = build_decision_brief_pptx(run.product_id, run.status, output)
     artifact = storage_put(
         f"workspaces/{body.workspace_id}/reports/{run.product_id}-decision-brief.pptx", pptx_bytes,
